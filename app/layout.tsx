@@ -1,0 +1,1 @@
+import './globals.css'; export const metadata={title:'RYZE Stores',description:"Discover what's next."}; export default function Layout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}
