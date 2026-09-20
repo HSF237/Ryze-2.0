@@ -6,7 +6,7 @@ const recordKey = (owner: string, kind: string, id: string) =>
 
 export function database() {
   return {
-    prepare() {
+    prepare(_sql?: string) {
       return {
         bind(owner: string, kind: string, id: string, body: string, _updated?: number) {
           return {
