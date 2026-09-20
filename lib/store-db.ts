@@ -1,5 +1,48 @@
-import {env} from 'cloudflare:workers';
-export function database(){if(!env.DB)throw Error('Storage temporarily unavailable');return env.DB;}
-export async function readRecords(owner:string){const r=await database().prepare('SELECT kind,id,body FROM store_records WHERE owner = ?').bind(owner).all<{kind:string;id:string;body:string}>();return r.results.map(x=>({...x,body:JSON.parse(x.body)}));}
-export async function getRecord(owner:string,kind:string,id='main'){const r=await database().prepare('SELECT body FROM store_records WHERE owner = ? AND kind = ? AND id = ?').bind(owner,kind,id).first<{body:string}>();return r?JSON.parse(r.body):null;}
-export async function putRecord(owner:string,kind:string,id:string,body:unknown){await database().prepare('INSERT INTO store_records(owner,kind,id,body,updated) VALUES(?,?,?,?,?) ON CONFLICT(owner,kind,id) DO UPDATE SET body=excluded.body,updated=excluded.updated').bind(owner,kind,id,JSON.stringify(body),Date.now()).run();}
+type StoreRecord = { kind: string; id: string; body: any };
+
+const records = new Map<string, StoreRecord>();
+const recordKey = (owner: string, kind: string, id: string) =>
+  `${owner}\u0000${kind}\u0000${id}`;
+
+export function database() {
+  return {
+    prepare() {
+      return {
+        bind(owner: string, kind: string, id: string, body: string) {
+          return {
+            async run() {
+              const key = recordKey(owner, kind, id);
+              if (records.has(key)) return { meta: { changes: 0 } };
+              records.set(key, { kind, id, body: JSON.parse(body) });
+              return { meta: { changes: 1 } };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+export async function readRecords(owner: string) {
+  return [...records.entries()]
+    .filter(([key]) => key.startsWith(`${owner}\u0000`))
+    .map(([, record]) => structuredClone(record));
+}
+
+export async function getRecord(owner: string, kind: string, id = "main") {
+  const record = records.get(recordKey(owner, kind, id));
+  return record ? structuredClone(record.body) : null;
+}
+
+export async function putRecord(
+  owner: string,
+  kind: string,
+  id: string,
+  body: unknown,
+) {
+  records.set(recordKey(owner, kind, id), {
+    kind,
+    id,
+    body: structuredClone(body),
+  });
+}
