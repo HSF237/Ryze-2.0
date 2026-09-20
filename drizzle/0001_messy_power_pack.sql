@@ -1,0 +1,1 @@
+DROP INDEX `records_owner_kind`;

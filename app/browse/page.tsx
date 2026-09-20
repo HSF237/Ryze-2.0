@@ -1,1 +1,0 @@
-import ProductGrid from"../../components/ProductGrid";export default function Browse(){return <main className="page"><div className="pageHero"><small>EXPLORE RYZE</small><h1>Browse everything.</h1><p>Audio, workspace, living and wearables — one evolving collection.</p></div><ProductGrid/></main>}

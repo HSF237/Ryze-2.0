@@ -1,0 +1,17 @@
+{
+  "name": "RYZE STORES",
+  "short_name": "RYZE",
+  "description": "A private, high-tech shopping preview.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#284cf0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
