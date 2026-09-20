@@ -1,0 +1,17 @@
+{
+  email {$TLS_EMAIL:admin@ryzestores.store}
+  servers {
+    protocols h1 h2 h3
+  }
+}
+
+{$API_DOMAIN:localhost} {
+  encode zstd gzip
+  header {
+    -Server
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+  reverse_proxy api:4000
+}
