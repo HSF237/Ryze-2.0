@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ryze_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [private]
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose: ["4000"]
+    read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [private]
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    networks: [private]
+
+networks:
+  private:
+    driver: bridge
+
+volumes:
+  ryze_postgres:
+  caddy_data:
+  caddy_config:
