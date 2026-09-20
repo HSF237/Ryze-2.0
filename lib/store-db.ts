@@ -8,7 +8,7 @@ export function database() {
   return {
     prepare() {
       return {
-        bind(owner: string, kind: string, id: string, body: string) {
+        bind(owner: string, kind: string, id: string, body: string, _updated?: number) {
           return {
             async run() {
               const key = recordKey(owner, kind, id);
