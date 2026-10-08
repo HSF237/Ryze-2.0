@@ -1,5 +1,5 @@
 import { getFirebaseUser } from "@/lib/firebase-auth-server";
-import { database, readRecords, getRecord, putRecord } from "@/lib/store-db";
+import { database, readRecords, getRecord, putRecord, readImportedCatalog } from "@/lib/store-db";
 import {
   products,
   totals,
@@ -15,7 +15,8 @@ const reply = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 async function catalogue(owner: string) {
   const changes = (await getRecord(owner, "catalog")) || {};
-  return products.map((p) => ({ ...p, ...changes[p.id] }));
+  const imported = await readImportedCatalog();
+  return [...products, ...imported].map((p: any) => ({ ...p, ...changes[p.id] }));
 }
 async function state(owner: string) {
   const rows = await readRecords(owner);
@@ -59,7 +60,8 @@ async function state(owner: string) {
 export async function GET(req: Request) {
   try {
     const user = await getFirebaseUser(req);
-    if (!user) return reply({ user: null, catalog: products });
+    if (!user)
+      return reply({ user: null, catalog: [...products, ...(await readImportedCatalog())] });
     return reply({
       user: { name: user.fullName || "", email: user.email },
       ...(await state(user.userId)),
