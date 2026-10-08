@@ -57,3 +57,8 @@ export async function putRecord(
     updated: Date.now(),
   });
 }
+
+export async function readImportedCatalog() {
+  const snapshot = await firebaseAdmin().db.collection("catalog").limit(250).get();
+  return snapshot.docs.map((doc) => doc.data());
+}
