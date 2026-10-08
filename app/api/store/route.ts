@@ -1,4 +1,4 @@
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { getFirebaseUser } from "@/lib/firebase-auth-server";
 import { database, readRecords, getRecord, putRecord } from "@/lib/store-db";
 import {
   products,
@@ -56,9 +56,9 @@ async function state(owner: string) {
     catalog: await catalogue(owner),
   };
 }
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const user = await getChatGPTUser();
+    const user = await getFirebaseUser(req);
     if (!user) return reply({ user: null, catalog: products });
     return reply({
       user: { name: user.fullName || "", email: user.email },
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     const origin = req.headers.get("origin");
     if (origin && origin !== new URL(req.url).origin)
       return reply({ error: "Request origin mismatch" }, 403);
-    const user = await getChatGPTUser();
+    const user = await getFirebaseUser(req);
     if (!user)
       return reply(
         { error: "Sign in to save your shopping.", signIn: true },

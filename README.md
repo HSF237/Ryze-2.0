@@ -1,10 +1,78 @@
 # RYZE STORES
 
-Private e-commerce concept preview with original generated imagery. Customer data is persisted in D1 and isolated by the authenticated Sites identity. Catalogue edits are scoped to the current user.
+## Firebase production foundation
+
+RYZE now uses Firebase Authentication for customer identity and Cloud Firestore
+for durable customer state. The existing store API remains the single trusted
+boundary, verifies Firebase ID tokens on every private request, and uses the
+Firebase Admin SDK to access data. Browser access to Firestore is denied by
+default.
+
+The `functions/` workspace contains the production payment boundary for
+Razorpay. It calculates totals from trusted Firestore product records, creates
+Razorpay orders on the server, verifies webhook HMAC signatures, rejects amount
+mismatches, and deduplicates webhook deliveries before creating an order.
+
+### Firebase setup
+
+1. Create a Firebase project owned by the store's adult/legal account holder.
+2. Enable Email/Password and Google providers in Authentication.
+3. Create a Firestore database in an India-adjacent production location.
+4. Register a Web app and copy its public values into `.env.local` using
+   `.env.example` as the template.
+5. Create a Firebase Admin service account and add its project ID, client email,
+   and private key only to local/Vercel encrypted environment variables.
+6. Copy `.firebaserc.example` to `.firebaserc` and replace the project ID.
+7. Deploy rules and indexes with `firebase deploy --only firestore,storage`.
+8. Add the Vercel domain and custom store domain to Firebase Authentication's
+   authorized domains.
+9. Register the web app with Firebase App Check (reCAPTCHA Enterprise) and add
+   its site key to `NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY`.
+
+### Razorpay setup
+
+The functions require three Firebase secrets. Start with Razorpay test-mode
+values and switch to live keys only after end-to-end testing and KYC approval:
+
+```sh
+firebase functions:secrets:set RAZORPAY_KEY_ID
+firebase functions:secrets:set RAZORPAY_KEY_SECRET
+firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET
+cd functions && npm ci && npm run build && cd ..
+firebase deploy --only functions
+```
+
+Configure the deployed `razorpayWebhook` URL in the Razorpay Dashboard. Never
+put the key secret or webhook secret in a `NEXT_PUBLIC_` variable. Enable budget
+alerts and a Cloud Functions spend cap before production traffic.
+
+### Verification
+
+```sh
+pnpm install
+pnpm exec tsc --noEmit
+pnpm run build
+cd functions && npm ci && npm run build
+```
+
+The Firebase project and Vercel variables must be configured before account or
+data features work in a deployed build. The old self-hosted backend is retained
+under `backend/` for migration reference; the storefront no longer depends on
+its in-memory data layer.
+
+E-commerce storefront with original generated imagery. Customer data is persisted
+in Firestore and isolated by verified Firebase user identity. Catalogue edits
+remain scoped to the current user until the dedicated administrator-role system
+is enabled.
 
 Implemented: search, filters, sorting, product details, quick view, saved cart/wishlist/comparison/recent items, bundles, coupons, profile/address/preferences, idempotent preview orders, cancellation, receipts, reorder, private reviews/support drafts and catalogue editing/export.
 
-Not live: payments, shipping, supplier feeds, public customer auth, email, AI, marketplace, refunds, analytics and remaining features listed in Store Studio. Concept products must be replaced with verified supplier data before commercial use. No payment keys are stored or requested in the UI.
+Not live yet: Razorpay production keys, shipping, supplier feeds, transactional
+email, refunds and marketplace fulfilment. Customer authentication and the
+secure payment-function boundary are implemented, but payment remains in test
+mode until Firebase/Razorpay configuration and launch verification are complete.
+Concept products must be replaced with verified supplier data before commercial
+use. No payment secrets are stored in the UI.
 
 Validation: TypeScript and production build passed. Run `node scripts/verify-store.mjs` for SQLite-backed API logic tests covering identity isolation, stock bounds, price authority and order idempotency. Browser/visual interaction QA was not performed; WebMCP runtime validation was unavailable under the permitted preview workflow.
 

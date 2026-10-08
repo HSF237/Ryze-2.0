@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // RYZE currently accesses Firestore only through trusted server code.
+    // Admin SDK and Cloud Functions bypass these client rules.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

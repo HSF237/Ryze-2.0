@@ -1,8 +1,10 @@
-type StoreRecord = { kind: string; id: string; body: any };
+import { firebaseAdmin } from "@/lib/firebase-admin";
 
-const records = new Map<string, StoreRecord>();
-const recordKey = (owner: string, kind: string, id: string) =>
-  `${owner}\u0000${kind}\u0000${id}`;
+type StoreRecord = { kind: string; id: string; body: any; updated: number };
+const recordsFor = (owner: string) =>
+  firebaseAdmin().db.collection("users").doc(owner).collection("records");
+const recordId = (kind: string, id: string) =>
+  `${encodeURIComponent(kind)}__${encodeURIComponent(id)}`;
 
 export function database() {
   return {
@@ -11,10 +13,19 @@ export function database() {
         bind(owner: string, kind: string, id: string, body: string, _updated?: number) {
           return {
             async run() {
-              const key = recordKey(owner, kind, id);
-              if (records.has(key)) return { meta: { changes: 0 } };
-              records.set(key, { kind, id, body: JSON.parse(body) });
-              return { meta: { changes: 1 } };
+              try {
+                await recordsFor(owner).doc(recordId(kind, id)).create({
+                  kind,
+                  id,
+                  body: JSON.parse(body),
+                  updated: Date.now(),
+                });
+                return { meta: { changes: 1 } };
+              } catch (error: any) {
+                if (error?.code === 6 || error?.code === "already-exists")
+                  return { meta: { changes: 0 } };
+                throw error;
+              }
             },
           };
         },
@@ -24,14 +35,13 @@ export function database() {
 }
 
 export async function readRecords(owner: string) {
-  return [...records.entries()]
-    .filter(([key]) => key.startsWith(`${owner}\u0000`))
-    .map(([, record]) => structuredClone(record));
+  const snapshot = await recordsFor(owner).get();
+  return snapshot.docs.map((doc) => doc.data() as StoreRecord);
 }
 
 export async function getRecord(owner: string, kind: string, id = "main") {
-  const record = records.get(recordKey(owner, kind, id));
-  return record ? structuredClone(record.body) : null;
+  const snapshot = await recordsFor(owner).doc(recordId(kind, id)).get();
+  return snapshot.exists ? snapshot.data()!.body : null;
 }
 
 export async function putRecord(
@@ -40,9 +50,10 @@ export async function putRecord(
   id: string,
   body: unknown,
 ) {
-  records.set(recordKey(owner, kind, id), {
+  await recordsFor(owner).doc(recordId(kind, id)).set({
     kind,
     id,
-    body: structuredClone(body),
+    body,
+    updated: Date.now(),
   });
 }

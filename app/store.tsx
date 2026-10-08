@@ -124,6 +124,7 @@ import {
   type Product,
   type Line,
 } from "@/lib/catalog";
+import { firebaseRequestHeaders } from "@/lib/firebase-client";
 
 type Address = {
   id?: string;
@@ -424,7 +425,9 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/store");
+      const r = await fetch("/api/store", {
+        headers: await firebaseRequestHeaders(),
+      });
       const body: any = await r.json();
       if (!r.ok) throw Error(body.error);
       setData({ ...empty, ...body });
@@ -537,16 +540,18 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
   }, [playing]);
   useEffect(() => {
     if (!selectedProduct || !data.user || loading) return;
-    fetch("/api/store", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "recent", id: selectedProduct.id }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: any) => {
-        if (d) setData((old) => ({ ...old, recent: d.recent }));
+    void firebaseRequestHeaders(true).then((headers) =>
+      fetch("/api/store", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ action: "recent", id: selectedProduct.id }),
       })
-      .catch(() => {});
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: any) => {
+          if (d) setData((old) => ({ ...old, recent: d.recent }));
+        })
+        .catch(() => {}),
+    );
     setQty(1);
   }, [selectedProduct?.id, loading, data.user?.email]);
   useEffect(() => {
@@ -606,7 +611,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
     try {
       const r = await fetch("/api/store", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await firebaseRequestHeaders(true),
         body: JSON.stringify(payload),
       });
       const body: any = await r.json();
@@ -3821,8 +3826,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                       </button>
                       <a
                         className="text-link"
-                        href="/signout-with-chatgpt?return_to=/"
-                        target="_top"
+                        href="/login?logout=1&returnTo=/"
                       >
                         Sign out
                       </a>
@@ -3992,15 +3996,14 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                 <UserRound />
                 <h2>Everything, in your space.</h2>
                 <p>
-                  Sign in with ChatGPT to save your bag, addresses and preview
+                  Sign in to save your bag, addresses and orders securely
                   orders.
                 </p>
                 <a
                   className="btn primary"
-                  href="/signin-with-chatgpt?return_to=/account"
-                  target="_top"
+                  href="/login?returnTo=/account"
                 >
-                  Sign in with ChatGPT <ArrowRight size={17} />
+                  Sign in securely <ArrowRight size={17} />
                 </a>
               </div>
             )}
@@ -4390,10 +4393,9 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                 <h2>Sign in to your studio.</h2>
                 <a
                   className="btn primary"
-                  href="/signin-with-chatgpt?return_to=/studio"
-                  target="_top"
+                  href="/login?returnTo=/studio"
                 >
-                  Sign in with ChatGPT
+                  Sign in securely
                 </a>
               </div>
             ) : (
@@ -4555,7 +4557,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                         },
                         {
                           title: "Customer sign-in",
-                          desc: "This private preview uses ChatGPT sign-in. A public customer authentication service is not connected.",
+                          desc: "Firebase Authentication protects customer accounts. Private store data is accessed only through server-verified identity tokens.",
                         },
                         {
                           title: "Email & notifications",
@@ -5074,14 +5076,13 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
             <a
               className="btn primary"
               href={
-                "/signin-with-chatgpt?return_to=" +
+                "/login?returnTo=" +
                 encodeURIComponent(
                   info.startsWith("signin:") ? info.slice(7) : path,
                 )
               }
-              target="_top"
             >
-              Sign in with ChatGPT <ArrowRight size={16} />
+              Sign in securely <ArrowRight size={16} />
             </a>
           ) : info === "location" ? (
             <form
