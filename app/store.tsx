@@ -2241,7 +2241,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
               </section>
               <div className="mobile-sticky-buy">
                 <div>
-                  <strong>{money(selectedProduct.price)}</strong>
+                  <strong>{productPrice(selectedProduct)}</strong>
                   <small>{selectedProduct.name}</small>
                 </div>
                 <button
@@ -2406,8 +2406,8 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
               </Tabs>
               <section className="recommendation-zone">
                 <div className="section-title">
-                  <h2>Frequently bought together.</h2>
-                  <p>Complete your setup with complementary concepts.</p>
+                  <h2>{isSupplierProduct(selectedProduct) ? "More from RYZE." : "Frequently bought together."}</h2>
+                  <p>{isSupplierProduct(selectedProduct) ? "Explore the rest of the catalogue." : "Complete your setup with complementary concepts."}</p>
                 </div>
                 <div className="bundle-recommendations">
                   {catalog
@@ -2419,7 +2419,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     )
                     .slice(0, 3)
                     .map(productCard)}
-                  <aside>
+                  {selectedProduct.pricingStatus !== "pending_shipping_quote" && <aside>
                     <Sparkles />
                     <h3>Complete your setup</h3>
                     <p>Add this recommended bundle to your bag in one tap.</p>
@@ -2451,7 +2451,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     >
                       Add bundle <Plus size={16} />
                     </button>
-                  </aside>
+                  </aside>}
                 </div>
                 <div className="section-title secondary-recs">
                   <h2>Customers also explored.</h2>
