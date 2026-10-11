@@ -126,6 +126,13 @@ import {
 } from "@/lib/catalog";
 import { firebaseRequestHeaders } from "@/lib/firebase-client";
 
+function isSupplierProduct(p: Product) {
+  return p.id.startsWith("cj-");
+}
+function productPrice(p: Product) {
+  return p.pricingStatus === "pending_shipping_quote" ? "Price pending" : money(p.price);
+}
+
 type Address = {
   id?: string;
   name: string;
@@ -898,17 +905,17 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
         </div>
         <div className="product-info">
           <small>
-            {p.category} <span>CONCEPT</span>
+            {p.category} <span>{isSupplierProduct(p) ? "CJ PRODUCT" : "CONCEPT"}</span>
           </small>
           <h3>{link("/product/" + p.id, p.name)}</h3>
           <div className="price-row">
-            <strong>{money(p.price)}</strong>
+            <strong>{productPrice(p)}</strong>
             <button
               aria-label={"Add " + p.name + " to bag"}
               onClick={() => add(p)}
               disabled={busy || p.stock === 0}
             >
-              {p.stock === 0 ? <span>Sold out</span> : <Plus size={18} />}
+              {p.stock === 0 ? <span>{p.pricingStatus === "pending_shipping_quote" ? "Coming soon" : "Sold out"}</span> : <Plus size={18} />}
             </button>
           </div>
         </div>
@@ -1973,7 +1980,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     }
                   >
                     <img
-                      src={selectedProduct.image}
+                      src={selectedProduct.images?.[galleryView] || selectedProduct.image}
                       alt={selectedProduct.name}
                     />
                     <span>
@@ -1984,7 +1991,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     </span>
                   </button>
                   <div className="gallery-thumbs" aria-label="Product gallery">
-                    {["Full view", "Detail crop", "Lifestyle crop"].map(
+                    {(selectedProduct.images?.length ? selectedProduct.images.map((_, i) => `Photo ${i + 1}`) : ["Full view", "Detail crop", "Lifestyle crop"]).map(
                       (label, index) => (
                         <button
                           key={label}
@@ -1995,12 +2002,12 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                           }}
                           aria-label={label}
                         >
-                          <img src={selectedProduct.image} alt="" />
+                          <img src={selectedProduct.images?.[index] || selectedProduct.image} alt="" />
                           <span>{label}</span>
                         </button>
                       ),
                     )}
-                    <button
+                    {!isSupplierProduct(selectedProduct) && <button
                       className={
                         demoPlaying ? "active motion-thumb" : "motion-thumb"
                       }
@@ -2008,10 +2015,10 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     >
                       <PlayCircle />
                       <span>Motion demo</span>
-                    </button>
+                    </button>}
                   </div>
                   <div className="gallery-caption">
-                    <span>0{galleryView + 1} / Generated product concept</span>
+                    <span>0{galleryView + 1} / {isSupplierProduct(selectedProduct) ? "Supplier product photograph" : "Generated product concept"}</span>
                     <button onClick={() => share(selectedProduct)}>
                       <Share2 size={15} /> Share
                     </button>
@@ -2024,15 +2031,15 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                   <h1>{selectedProduct.name}</h1>
                   <p>{selectedProduct.description}</p>
                   <div className="detail-price">
-                    {money(selectedProduct.price)}
-                    <span>Sample price · concept product</span>
+                    {productPrice(selectedProduct)}
+                    <span>{isSupplierProduct(selectedProduct) ? (selectedProduct.pricingStatus === "pending_shipping_quote" ? "Shipping and selling price under review" : "Supplier product") : "Sample price · concept product"}</span>
                   </div>
                   <div className="variant">
-                    <span>Finish</span>
+                    <span>{isSupplierProduct(selectedProduct) ? "Colour / size" : "Finish"}</span>
                     <div className="variant-options">
                       {selectedProduct.colors
                         .concat(
-                          selectedProduct.colors.length === 1
+                          selectedProduct.colors.length === 1 && !isSupplierProduct(selectedProduct)
                             ? ["RYZE custom preview"]
                             : [],
                         )
@@ -2048,9 +2055,11 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     </div>
                   </div>
                   <div className="stock-note">
-                    {selectedProduct.stock > 0
-                      ? selectedProduct.stock + " units in preview inventory"
-                      : "Out of stock in preview inventory"}
+                    {selectedProduct.pricingStatus === "pending_shipping_quote"
+                      ? "Coming soon — ordering is not enabled yet."
+                      : selectedProduct.stock > 0
+                        ? selectedProduct.stock + (isSupplierProduct(selectedProduct) ? " units available" : " units in preview inventory")
+                        : isSupplierProduct(selectedProduct) ? "Out of stock" : "Out of stock in preview inventory"}
                   </div>
                   <div className="purchase-row">
                     <div className="qty">
@@ -2899,7 +2908,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                   <small>{p.category.toUpperCase()} OFFER</small>
                   <h3>{p.name}</h3>
                   <p>
-                    <strong>{money(p.price)}</strong>
+                    <strong>{productPrice(p)}</strong>
                   </p>
                   <span>Check eligible coupons below</span>
                 </article>
@@ -3078,7 +3087,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                           .map((p) => (
                             <TableCell key={p.id}>
                               {k === "Price"
-                                ? money(p.price)
+                                ? productPrice(p)
                                 : k === "Category"
                                   ? p.category
                                   : k === "Preview stock"
@@ -4477,7 +4486,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                                 </div>
                               </TableCell>
                               <TableCell>{p.category}</TableCell>
-                              <TableCell>{money(p.price)}</TableCell>
+                              <TableCell>{productPrice(p)}</TableCell>
                               <TableCell>
                                 <span
                                   className={
@@ -4880,7 +4889,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     <strong>{p.name}</strong>
                     <small>{p.category}</small>
                   </span>
-                  <b>{money(p.price)}</b>
+                  <b>{productPrice(p)}</b>
                   <ArrowUpRight size={16} />
                 </button>
               ))}
@@ -4919,12 +4928,9 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                   <DialogDescription>{quick.description}</DialogDescription>
                 </DialogHeader>
                 <h3>
-                  {money(
-                    catalog.find((p) => p.id === quick.id)?.price ||
-                      quick.price,
-                  )}
+                  {productPrice(catalog.find((p) => p.id === quick.id) || quick)}
                 </h3>
-                <small>Concept product · Sample price</small>
+                <small>{isSupplierProduct(quick) ? "Supplier product · " + (quick.pricingStatus === "pending_shipping_quote" ? "Coming soon" : "Retail price") : "Concept product · Sample price"}</small>
                 <button
                   className="btn primary full"
                   disabled={busy || quick.stock === 0}
@@ -4953,7 +4959,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
         <DialogContent className="zoom-dialog">
           <DialogHeader>
             <DialogTitle>{zoom?.name}</DialogTitle>
-            <DialogDescription>Original concept image</DialogDescription>
+            <DialogDescription>{zoom && isSupplierProduct(zoom) ? "Supplier product photograph" : "Original concept image"}</DialogDescription>
           </DialogHeader>
           {zoom && <img src={zoom.image} alt={zoom.name} />}
         </DialogContent>
@@ -5017,7 +5023,7 @@ export default function Store({ initialPath = "/" }: { initialPath?: string }) {
                     <img src={p.image} alt={p.name} />
                     <span>
                       {p.name}
-                      <strong>{money(p.price)}</strong>
+                      <strong>{productPrice(p)}</strong>
                     </span>
                     <ArrowUpRight size={18} />
                   </button>
